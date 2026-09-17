@@ -18,8 +18,6 @@ jobs:
         run: |
           curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-      - name: Resolve pinned dependencies
-        run: lake update
       - name: Fetch Mathlib cache
         run: lake exe cache get
       - name: Build proof
@@ -29,6 +27,10 @@ jobs:
           set -o pipefail
           lake env lean Audit.lean | tee axiom-audit.log
           python3 scripts/check_axioms.py axiom-audit.log
+      - name: Replay module in Lean kernel
+        run: |
+          set -o pipefail
+          lake env leanchecker --verbose PowerfulPairs | tee kernel-replay.log
       - name: Preserve build inputs and audit
         uses: actions/upload-artifact@v4
         with:
@@ -37,3 +39,4 @@ jobs:
             lake-manifest.json
             lean-toolchain
             axiom-audit.log
+            kernel-replay.log
