@@ -28,7 +28,7 @@ jobs:
         run: |
           set -o pipefail
           lake env lean Audit.lean | tee axiom-audit.log
-          if grep -E 'sorryAx|Lean.ofReduceBool|Lean.trustCompiler' axiom-audit.log; then exit 1; fi
+          python3 scripts/check_axioms.py axiom-audit.log
       - name: Preserve build inputs and audit
         uses: actions/upload-artifact@v4
         with:

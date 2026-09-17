@@ -39,7 +39,7 @@ theorem nonsquare_mul_square {a x : ℕ} (ha : ¬ IsSquare a) (hx : 0 < x) :
     ¬ IsSquare (a * x ^ 2) := by
   rintro ⟨y, hy⟩
   have hd : x ^ 2 ∣ y ^ 2 := by
-    rw [pow_two, ← hy]
+    rw [pow_two y, ← hy]
     exact dvd_mul_left _ _
   have hd' : x ∣ y := (Nat.pow_dvd_pow_iff (by decide : 2 ≠ 0)).mp hd
   obtain ⟨z, hz⟩ := hd'
@@ -62,6 +62,7 @@ theorem orbit_positive (n k : ℕ) :
   induction k with
   | zero => simp [orbit]
   | succ k ih =>
+      rcases ih with ⟨hx, hy⟩
       dsimp [orbit]
       constructor <;> positivity
 
@@ -76,7 +77,7 @@ theorem orbit_equation (n k : ℕ) :
 theorem orbit_order (n k : ℕ) : (orbit n k).2 ≤ (orbit n k).1 := by
   cases k with
   | zero => simp [orbit]
-  | succ k => dsimp [orbit]; omega
+  | succ k => dsimp [orbit]; nlinarith
 
 theorem orbit_step_upper (n k : ℕ) :
     (orbit n (k + 1)).1 ≤ (4 * n + 3) * (orbit n k).1 := by
@@ -130,6 +131,30 @@ theorem value_geometric_upper (n k : ℕ) :
           Nat.mul_le_mul_left _ ih
         _ = n * ((4 * n + 3) ^ 2) ^ (k + 1) := by ring
 
+noncomputable def countGoodPairs (X : ℕ) : ℕ := by
+  classical
+  exact ((Finset.Icc 1 X).filter GoodPair).card
+
+/-- A quantitative lower bound: at least `k+1` distinct counterexamples below
+the stated geometric cutoff. This is a logarithmic lower bound in the cutoff,
+not the open counting upper bound from Erdős 365. -/
+theorem count_at_geometric_cutoff {n : ℕ} (hn : GoodPair n) (k : ℕ) :
+    k + 1 ≤ countGoodPairs (n * ((4 * n + 3) ^ 2) ^ k) := by
+  classical
+  have hmono := value_strictMono hn.1.1
+  have hsub : (Finset.range (k + 1)).image (value n) ⊆
+      (Finset.Icc 1 (n * ((4 * n + 3) ^ 2) ^ k)).filter GoodPair := by
+    intro m hm
+    obtain ⟨i, hi, rfl⟩ := Finset.mem_image.mp hm
+    have hik : i ≤ k := by have := Finset.mem_range.mp hi; omega
+    apply Finset.mem_filter.mpr
+    refine ⟨Finset.mem_Icc.mpr ⟨?_, ?_⟩, goodPair_value hn i⟩
+    · exact (goodPair_value hn i).1.1
+    · exact (hmono.monotone hik).trans (value_geometric_upper n k)
+  have hc := Finset.card_le_card hsub
+  rw [Finset.card_image_of_injective _ hmono.injective, Finset.card_range] at hc
+  exact hc
+
 /-- Every valid seed produces a further pair in each sufficiently high
 multiplicative interval, with an explicit constant depending only on the seed. -/
 theorem bounded_multiplicative_gaps {n : ℕ} (hn : GoodPair n)
@@ -151,11 +176,11 @@ theorem bounded_multiplicative_gaps {n : ℕ} (hn : GoodPair n)
 
 theorem golomb_seed : GoodPair 12167 := by
   have h₁ : Powerful 12167 := by
-    convert powerful_cube (by decide : 0 < (23 : ℕ)) using 1 <;> norm_num
+    convert powerful_cube (by decide : 0 < (23 : ℕ)) using 1; norm_num
   have h₂ : Powerful 12168 := by
     convert powerful_mul (powerful_cube (by decide : 0 < (2 : ℕ)))
-      (powerful_square (by decide : 0 < (39 : ℕ))) using 1 <;> norm_num
-  exact ⟨h₁, h₂, by norm_num [IsSquare], by norm_num [IsSquare]⟩
+      (powerful_square (by decide : 0 < (39 : ℕ))) using 1; norm_num
+  exact ⟨h₁, h₂, by norm_num, by norm_num⟩
 
 theorem jsp_000301 :
     ¬ (∀ n : ℕ, Powerful n → Powerful (n + 1) →
